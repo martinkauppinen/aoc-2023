@@ -113,7 +113,7 @@ pub fn part_one(input: &str) -> Option<u32> {
             .map(parse_game)
             .map(Result::unwrap)
             .map(|game| {
-                if game.sets.clone().into_iter().all(|set| set <= max_set) {
+                if game.sets.into_iter().all(|set| set <= max_set) {
                     game.id
                 } else {
                     0
