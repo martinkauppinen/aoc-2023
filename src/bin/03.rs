@@ -135,6 +135,8 @@ pub fn part_two(input: &str) -> Option<u32> {
                 let mut numbers = grid
                     .numbers
                     .iter()
+                    .skip_while(|number| number.position.row < gear.position.row.saturating_sub(1))
+                    .take_while(|number| number.position.row < gear.position.row + 2)
                     .filter(|number| number.rect().contains(gear.position));
 
                 let a = numbers.next();
