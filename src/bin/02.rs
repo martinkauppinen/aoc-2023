@@ -1,6 +1,7 @@
+use advent_of_code::parsers::number_parser;
 use nom::{
     bytes::complete::tag,
-    character::complete::{alpha0, digit1},
+    character::complete::alpha0,
     combinator::map_res,
     multi::separated_list0,
     sequence::{preceded, separated_pair, terminated},
@@ -63,10 +64,6 @@ impl PartialOrd for CubeSet {
     }
 }
 
-fn parse_number(input: &str) -> IResult<u32> {
-    map_res(digit1, str::parse)(input)
-}
-
 fn parse_color(input: &str) -> IResult<CubeColor> {
     map_res(alpha0, |color| match color {
         "red" => Ok(CubeColor::Red),
@@ -77,7 +74,7 @@ fn parse_color(input: &str) -> IResult<CubeColor> {
 }
 
 fn parse_cube_set(input: &str) -> IResult<CubeSet> {
-    let parse_color_count = separated_pair(parse_number, tag(" "), parse_color);
+    let parse_color_count = separated_pair(number_parser::<u32>, tag(" "), parse_color);
     let (rest, color_counts) = separated_list0(tag(", "), parse_color_count)(input)?;
 
     let set = color_counts
@@ -95,7 +92,7 @@ fn parse_cube_set(input: &str) -> IResult<CubeSet> {
 
 fn parse_game(input: &str) -> Result<Game, nom::Err<nom::error::Error<&str>>> {
     let mut parse_cube_sets = separated_list0(tag("; "), parse_cube_set);
-    let mut parse_game_id = terminated(preceded(tag("Game "), parse_number), tag(": "));
+    let mut parse_game_id = terminated(preceded(tag("Game "), number_parser), tag(": "));
     let (rest, id) = parse_game_id(input)?;
     let (_, sets) = parse_cube_sets(rest)?;
     Ok(Game { id, sets })

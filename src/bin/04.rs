@@ -1,11 +1,8 @@
-use std::str::FromStr;
-
+use advent_of_code::parsers::{number_parser, space_separated_numbers_parser};
 use nohash_hasher::IntMap;
 use nom::{
     bytes::complete::tag,
-    character::complete::{digit1, space0, space1},
-    combinator::map_res,
-    multi::separated_list0,
+    character::complete::space1,
     sequence::{preceded, separated_pair, terminated},
 };
 
@@ -35,18 +32,19 @@ impl Card {
     }
 }
 
-impl FromStr for Card {
-    type Err = nom::Err<()>;
+impl<'a> TryFrom<&'a str> for Card {
+    type Error = nom::Err<nom::error::Error<&'a str>>;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let number_parser = || map_res(digit1::<&str, ()>, str::parse::<u32>);
+    fn try_from(s: &'a str) -> Result<Self, Self::Error> {
         let mut id_parser = terminated(
-            preceded(terminated(tag("Card"), space1), number_parser()),
+            preceded(terminated(tag("Card"), space1), number_parser),
             tag(": "),
         );
-        let numbers_parser = || separated_list0(space1, preceded(space0, number_parser()));
-        let mut split_numbers_parser =
-            separated_pair(numbers_parser(), tag(" | "), numbers_parser());
+        let mut split_numbers_parser = separated_pair(
+            space_separated_numbers_parser,
+            tag(" | "),
+            space_separated_numbers_parser,
+        );
 
         let (s, id) = id_parser(s)?;
         let (_, (winning_numbers, numbers)) = split_numbers_parser(s)?;
@@ -62,7 +60,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(
         input
             .lines()
-            .map(str::parse)
+            .map(Card::try_from)
             .map(Result::unwrap)
             .map(Card::score)
             .sum(),
@@ -73,7 +71,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     let mut card_map = IntMap::<u32, u32>::default();
     input
         .lines()
-        .map(str::parse::<Card>)
+        .map(Card::try_from)
         .map(Result::unwrap)
         .for_each(|card| {
             let instances = *card_map.entry(card.id).or_insert(1);
