@@ -1,5 +1,7 @@
 {
     "files.exclude": {
         "**/.*": true
-    }
+    },
+    "rust-analyzer.checkOnSave": true,
+    "editor.formatOnSave": true
 }
