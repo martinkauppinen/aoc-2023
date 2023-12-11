@@ -1,5 +1,4 @@
 use itertools::{FoldWhile, Itertools};
-use nohash_hasher::IntSet;
 use nom::{
     bytes::complete::tag, character::complete::alpha1, sequence::separated_pair, IResult, Parser,
 };
@@ -62,7 +61,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(steps as u32 + 1)
 }
 
-pub fn part_two(input: &str) -> Option<u64> {
+pub fn part_two(input: &str) -> Option<usize> {
     let mut chunks = input.split("\n\n");
     let directions = chunks
         .next()
@@ -72,49 +71,21 @@ pub fn part_two(input: &str) -> Option<u64> {
         .cycle();
     let adj = parse_adjacency(chunks.next().unwrap());
 
-    let ghost_paths = adj
-        .iter()
+    adj.iter()
         .enumerate()
         .step_by(26)
         .filter(|(_, dir)| dir[0].is_some() && dir[1].is_some())
-        .map(|(start, _)| start)
-        .collect_vec();
-
-    let steps = ghost_paths
-        .iter()
-        .map(|start| {
-            let mut seen_zs: IntSet<usize> = IntSet::default();
-            directions
-                .clone()
-                .enumerate()
-                .fold_while(
-                    (*start, vec![]),
-                    |(source, mut step_vec), (i, direction)| {
-                        let destination = adj[source][direction].unwrap();
-                        if destination % 26 == 25 {
-                            if seen_zs.contains(&destination) {
-                                FoldWhile::Done((destination, step_vec))
-                            } else {
-                                seen_zs.insert(destination);
-                                step_vec.push(i + 1);
-                                FoldWhile::Continue((destination, step_vec))
-                            }
-                        } else {
-                            FoldWhile::Continue((destination, step_vec))
-                        }
-                    },
-                )
-                .into_inner()
-                .1
+        .map(|(start, _)| {
+            let mut current = start;
+            for (i, direction) in directions.clone().enumerate() {
+                current = adj[current][direction].unwrap();
+                if current % 26 == 25 {
+                    return i + 1;
+                }
+            }
+            unreachable!()
         })
-        .collect_vec();
-
-    let steps = steps.concat();
-    let answer = steps
-        .iter()
-        .skip(1)
-        .fold(steps[0], |acc, step| num::integer::lcm(acc, *step));
-    Some(answer as u64)
+        .reduce(num::integer::lcm)
 }
 
 #[cfg(test)]
