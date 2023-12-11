@@ -92,6 +92,36 @@ impl Pipe {
         self.connects(Direction::North) && self.connects(Direction::South)
     }
 
+    fn vertical_equivalent(a: Pipe, b: Pipe) -> Option<Self> {
+        if !a.is_bend() || !b.is_bend() {
+            return None;
+        }
+
+        match ((a.from, a.to), (b.from, b.to)) {
+            ((Direction::East, Direction::North), (Direction::South, Direction::West))
+            | ((Direction::South, Direction::West), (Direction::East, Direction::North))
+            | ((Direction::South, Direction::East), (Direction::West, Direction::North))
+            | ((Direction::West, Direction::North), (Direction::South, Direction::East)) => {
+                Some(Pipe {
+                    from: Direction::South,
+                    to: Direction::North,
+                    part_of_loop: a.part_of_loop && b.part_of_loop,
+                })
+            }
+            ((Direction::East, Direction::South), (Direction::North, Direction::West))
+            | ((Direction::North, Direction::West), (Direction::East, Direction::South))
+            | ((Direction::North, Direction::East), (Direction::West, Direction::South))
+            | ((Direction::West, Direction::South), (Direction::North, Direction::East)) => {
+                Some(Pipe {
+                    from: Direction::North,
+                    to: Direction::South,
+                    part_of_loop: a.part_of_loop && b.part_of_loop,
+                })
+            }
+            _ => None,
+        }
+    }
+
     fn get_type(&self) -> PipeType {
         if self.is_bend() {
             PipeType::Bend
@@ -130,7 +160,7 @@ impl Tile {
 struct Grid {
     tiles: Vec<Vec<Tile>>,
     start: Position,
-    current_position: Position,
+    loop_length: usize,
 }
 
 impl Grid {
@@ -145,7 +175,6 @@ impl Grid {
             .unwrap();
 
         let start = Position { row, col };
-        let current_position = Position { row, col };
 
         let connects_north = tiles[row - 1][col].connects(Direction::South);
         let connects_south = tiles[row + 1][col].connects(Direction::North);
@@ -188,39 +217,35 @@ impl Grid {
 
         tiles[row][col] = start_pipe;
 
-        Self {
-            tiles,
-            start,
-            current_position,
-        }
-    }
-
-    fn find_loop_len(&mut self) -> usize {
-        let mut len = 1;
-        let mut current_position = self.start;
-        let mut current_tile = self.tiles[self.start];
+        let mut loop_length = 1;
+        let mut current_position = start;
+        let mut current_tile = tiles[start];
         let mut go_direction = current_tile.pipe().from;
         current_position.go(current_tile.pipe().outgoing(go_direction));
         go_direction = current_tile.pipe().outgoing(go_direction);
-        current_tile = self.tiles[current_position];
+        current_tile = tiles[current_position];
 
-        while current_position != self.start {
+        while current_position != start {
             go_direction = go_direction.invert();
 
-            let mut current_pipe = self.tiles[current_position].pipe();
+            let mut current_pipe = tiles[current_position].pipe();
             // fix orientation
             if current_pipe.from != go_direction {
                 current_pipe.swap();
             }
             current_pipe.part_of_loop = true;
-            self.tiles[current_position] = Tile::Pipe(current_pipe);
+            tiles[current_position] = Tile::Pipe(current_pipe);
 
-            len += 1;
+            loop_length += 1;
             current_position.go(current_tile.pipe().outgoing(go_direction));
             go_direction = current_tile.pipe().outgoing(go_direction);
-            current_tile = self.tiles[current_position];
+            current_tile = tiles[current_position];
         }
-        len
+        Self {
+            tiles,
+            start,
+            loop_length,
+        }
     }
 }
 
@@ -290,64 +315,41 @@ fn parse_line(line: &str) -> Vec<Tile> {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let mut grid = Grid::new(input.lines().map(parse_line).collect_vec());
-    Some((grid.find_loop_len() / 2) as u32)
+    let grid = Grid::new(input.lines().map(parse_line).collect_vec());
+    Some((grid.loop_length / 2) as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let mut grid = Grid::new(input.lines().map(parse_line).collect_vec());
-    grid.find_loop_len();
+    let grid = Grid::new(input.lines().map(parse_line).collect_vec());
     let mut nest = 0;
     for row in grid.tiles {
         let mut winding_number = 0;
         let mut bend_stack: Vec<Pipe> = Vec::new();
         for tile in row {
             match tile {
-                #[allow(clippy::collapsible_if, clippy::if_same_then_else)]
-                Tile::Pipe(pipe) if pipe.part_of_loop => {
-                    if pipe.is_horizontal() {
-                        continue;
-                    }
-                    if let Some(last_bend) = bend_stack.pop() {
-                        match (last_bend.get_type(), pipe.get_type()) {
-                            (PipeType::Bend, PipeType::Bend) => {
-                                if last_bend.from == Direction::North && pipe.to == Direction::South
-                                {
-                                    winding_number -= 1;
-                                } else if last_bend.from == Direction::South
-                                    && pipe.to == Direction::North
-                                {
-                                    winding_number += 1;
-                                } else if last_bend.to == Direction::North
-                                    && pipe.from == Direction::South
-                                {
-                                    winding_number += 1;
-                                } else if last_bend.to == Direction::South
-                                    && pipe.from == Direction::North
-                                {
-                                    winding_number -= 1;
-                                }
-                            }
-                            (PipeType::Bend, PipeType::Vertical) => {
+                Tile::Pipe(pipe) if pipe.part_of_loop => match pipe.get_type() {
+                    PipeType::Bend => {
+                        if let Some(last_bend) = bend_stack.pop() {
+                            if let Some(pipe) = Pipe::vertical_equivalent(last_bend, pipe) {
                                 if pipe.to == Direction::North {
                                     winding_number += 1;
                                 } else {
                                     winding_number -= 1;
                                 }
-                                bend_stack.push(last_bend);
                             }
-                            _ => {}
+                        } else {
+                            bend_stack.push(pipe);
                         }
-                    } else if pipe.is_vertical() {
+                    }
+                    PipeType::Vertical => {
                         if pipe.to == Direction::North {
                             winding_number += 1;
                         } else {
                             winding_number -= 1;
                         }
-                    } else {
-                        bend_stack.push(pipe);
                     }
-                }
+                    PipeType::Horizontal => {}
+                },
                 _ => {
                     if winding_number != 0 {
                         nest += 1;
