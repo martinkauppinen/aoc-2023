@@ -232,7 +232,7 @@ mod tests {
     fn test_contains() {
         let range1 = Range::new((5, 15)); // 5..=19
         for i in 0..=20 {
-            if i >= 5 && i <= 19 {
+            if (5..=19).contains(&i) {
                 assert!(range1.contains(&i));
             } else {
                 assert!(!range1.contains(&i));
@@ -305,7 +305,7 @@ mod tests {
 
         let soils = seeds
             .iter()
-            .flat_map(|seed| seed_to_soil.get(&seed))
+            .flat_map(|seed| seed_to_soil.get(seed))
             .collect::<Vec<_>>();
         assert_eq!(soils[0], Range::new((81, 14)));
         assert_eq!(soils[1], Range::new((57, 13)));
@@ -318,7 +318,7 @@ mod tests {
 
         let fertilizers = soils
             .iter()
-            .flat_map(|soil| soil_to_fertilizer.get(&soil))
+            .flat_map(|soil| soil_to_fertilizer.get(soil))
             .collect::<Vec<_>>();
         assert_eq!(fertilizers[0], soils[0]);
         assert_eq!(fertilizers[1], soils[1]);
@@ -332,7 +332,7 @@ mod tests {
 
         let waters = fertilizers
             .iter()
-            .flat_map(|fertilizer| fertilizer_to_water.get(&fertilizer))
+            .flat_map(|fertilizer| fertilizer_to_water.get(fertilizer))
             .collect::<Vec<_>>();
         assert_eq!(waters[0], Range::new((81, 14)));
         assert_eq!(waters[1], Range::new((53, 4)));
@@ -346,7 +346,7 @@ mod tests {
 
         let lights = waters
             .iter()
-            .flat_map(|water| water_to_light.get(&water))
+            .flat_map(|water| water_to_light.get(water))
             .collect::<Vec<_>>();
         assert_eq!(lights[0], Range::new((74, 14)));
         assert_eq!(lights[1], Range::new((46, 4)));
@@ -361,7 +361,7 @@ mod tests {
 
         let temperatures = lights
             .iter()
-            .flat_map(|light| light_to_temperature.get(&light))
+            .flat_map(|light| light_to_temperature.get(light))
             .collect::<Vec<_>>();
         assert_eq!(temperatures[0], Range::new((78, 3)));
         assert_eq!(temperatures[1], Range::new((45, 11)));
@@ -376,7 +376,7 @@ mod tests {
 
         let humidities = temperatures
             .iter()
-            .flat_map(|temperature| temperature_to_humidity.get(&temperature))
+            .flat_map(|temperature| temperature_to_humidity.get(temperature))
             .collect::<Vec<_>>();
         assert_eq!(humidities[0], Range::new((78, 3)));
         assert_eq!(humidities[1], Range::new((46, 11)));
@@ -391,7 +391,7 @@ mod tests {
 
         let locations = humidities
             .iter()
-            .flat_map(|humidity| humidity_to_location.get(&humidity))
+            .flat_map(|humidity| humidity_to_location.get(humidity))
             .collect::<Vec<_>>();
         assert_eq!(locations[0], Range::new((82, 3)));
         assert_eq!(locations[1], Range::new((60, 1)));
